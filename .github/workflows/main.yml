@@ -1,0 +1,50 @@
+name: Hexo CI/CD 自动部署
+
+# 触发条件：推送到 main 分支时执行
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest  # 使用 Ubuntu 环境运行
+
+    steps:
+      # 1. 拉取源文件仓库代码
+      - name: 拉取代码
+        uses: actions/checkout@v4
+        with:
+          submodules: true  # 如果主题是通过 git submodule 引入的，需要开启
+
+      # 2. 安装 Node.js（Hexo 依赖 Node 环境）
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x  # 推荐 16.x 及以上版本，与本地 Node 版本一致
+
+      # 3. 安装 Hexo 依赖
+      - name: 安装依赖
+        run: |
+          sudo timedatectl set-timezone "Asia/Shanghai"
+          npm install hexo-cli -g  # 全局安装 Hexo 命令行工具
+          npm install  # 安装项目依赖（package.json 中定义的）
+
+      # 4. 生成静态文件（hexo g）
+      - name: 生成静态页面
+        run: |
+          hexo clean  # 清理缓存
+          hexo generate  # 生成 public 目录
+
+      # 5. 部署到目标仓库（如 username.github.io）
+      - name: 部署到 GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4  # 专用部署工具
+        with:
+          # 使用之前配置的私钥认证
+          deploy_key: ${{ secrets.HEXO_DEPLOY_KEY }}
+          # 部署目录（Hexo 生成的静态文件在 public 目录）
+          publish_dir: ./public
+          # 部署到目标仓库的 main 分支（根据实际情况修改）
+          publish_branch: main
+          # 目标仓库地址（格式：github.com/用户名/部署仓库名.git）
+          external_repository: ukertcos/ukertcos.github.io
