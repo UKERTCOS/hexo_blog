@@ -77,6 +77,8 @@ git cmpt 'commit info'
 
 # 配置 GitHub Actions
 
+> 参见：[Alan Lee 的博客](https://alanlee.fun/2024/07/05/deploy-hexo-with-github-action)
+
 ## 加 keys
 
 * 创建 deploy key
@@ -86,7 +88,7 @@ ssh-keygen -t rsa -f ~/.ssh/hexo_deploy_key -C "your_email@example.com"
 ```
 
 * 加 deploy key
-	在 **发布仓库** 的设置页面：[https://github.com/_YourUsername_/_username_.github.io/settings/keys/new](https://github.com/username/username.github.io/settings/keys/new)
+	在 **博客发布仓库** 的设置页面：[https://github.com/_YourUsername_/_username_.github.io/settings/keys/new](https://github.com/username/username.github.io/settings/keys/new)
 
 	**记得勾选 `Allow write access` ！**
 
@@ -95,16 +97,63 @@ ssh-keygen -t rsa -f ~/.ssh/hexo_deploy_key -C "your_email@example.com"
 	2. 添加私钥：Name：`HEXO_DEPLOY_KEY` ； Secret：粘贴 **私钥** !
 	3. 配置 GitHub Actions ：使用了 [这个配置](https://github.com/marketplace/actions/hexo-action)
 
+* 配置 workflow 文件
+```yml
+name: Hexo CI
+
+# 触发条件：推送到 main 分支时执行
+on:
+  push:
+	  branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+        with:
+          submodules: true  # 如果主题是通过 git submodule 引入的，需要开启
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: 安装依赖
+        run: |
+          sudo timedatectl set-timezone "Asia/Shanghai"
+          npm install -g hexo-cli
+          npm install
+
+      - name: 生成静态页面
+        run: |
+          hexo clean  # 清理缓存
+          hexo g
+
+      - name: 部署到 GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          # 使用之前配置的私钥认证
+          deploy_key: ${{ secrets.HEXO_DEPLOY_KEY }}
+          # 部署目录（Hexo 生成的静态文件在 public 目录）
+          publish_dir: ./public
+          # 部署到目标仓库的 main 分支
+          publish_branch: main
+          # 目标仓库地址
+          external_repository: ukertcos/ukertcos.github.io
+
+```
+
 大功告成！
 
 # 验证 CI 流程
 
-本地修改 Hexo 源文件（如新增一篇文章 `_posts/test.md`），推送到源码仓库：
+本地修改 Hexo 源文件（新增一篇文章 `_posts/test.md`），推送到源码仓库：
 
 ```bash
 git add .
 git cmpt -m "Add test article"
 ```
-
-
-
